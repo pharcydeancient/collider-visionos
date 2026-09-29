@@ -1,0 +1,7 @@
+Collider - Vision OS unified web build (Flutter 3.47.5, release)
+Run locally (any static server works; index.html uses <base href="./">):
+  cd web        (this folder)
+  python3 -m http.server 8770
+  open http://localhost:8770/
+Deep links for review: ?drawer=apps|settings|market|smartgen|files|themes|premium|theme_detail|music|upgrade|skills|consensus|history|model_ladder, ?composer=1, ?expand=1, ?zoom=1, ?local=1, ?browser=1
+Rebuild from source: flutter pub get && flutter build web --release, then change <base href="/"> to <base href="./"> in build/web/index.html
