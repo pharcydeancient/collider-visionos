@@ -1,0 +1,60 @@
+name: deploy
+
+# Downloads a tar.gz of a Flutter build/web folder, verifies its sha256,
+# and commits the contents to the gh-pages branch (served by GitHub Pages).
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "https URL of the site tarball (tar.gz of the web/ folder contents)"
+        required: true
+      sha256:
+        description: "sha256 of the tarball"
+        required: true
+      label:
+        description: "commit message label, e.g. Round 5 (abc1234)"
+        required: false
+        default: "web build"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and verify tarball
+        env:
+          URL: ${{ inputs.url }}
+          SHA: ${{ inputs.sha256 }}
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors "$URL" -o /tmp/site.tar.gz
+          echo "$SHA  /tmp/site.tar.gz" | sha256sum -c -
+          mkdir -p /tmp/site && tar xzf /tmp/site.tar.gz -C /tmp/site
+          test -f /tmp/site/index.html
+          touch /tmp/site/.nojekyll
+          sha256sum /tmp/site/main.dart.js || true
+          du -sh /tmp/site
+      - name: Commit to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          set -e
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$REMOTE" gh-pages >/dev/null 2>&1; then
+            git clone --depth 1 --branch gh-pages "$REMOTE" /tmp/pages
+          else
+            mkdir /tmp/pages && cd /tmp/pages && git init -b gh-pages && git remote add origin "$REMOTE" && cd -
+          fi
+          rsync -a --delete --exclude .git /tmp/site/ /tmp/pages/
+          cd /tmp/pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "No changes"; else git commit -m "Deploy: ${LABEL}"; fi
+          git push origin gh-pages
