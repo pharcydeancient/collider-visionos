@@ -40,8 +40,26 @@ if (!window._flutter) {
 }
 _flutter.buildConfig = {"engineRevision":"af7e796e161ae0bb1ff0758c71a7105418bd9ded","wasmHashes":{"wimp.wasm":"e924eaafd801d41e017d178f3fd5cf8a417f641fe35c9ed34a4e1d7582283e0c","skwasm.wasm":"e540fd5e8303b7b68ec2718cb49e9c421f8ade3075b15e02a7059a62654df9a1","canvaskit.wasm":"fbed517a43e82452404446683f00f2e876d835aed84410695759e67b6bb01cd3","chromium/canvaskit.wasm":"ae8ff1d858140f7b1300ced3fa89fb8c9dce0a400a0f4f1e11f6dcfb3315fdcf","webparagraph/canvaskit.wasm":"0ce1b05082efdc8529550e8a01f6ff0593972d55525035010e26f5600aa9f254","skwasm_heavy.wasm":"565f5cc1cca6ab120f11934b105f01fec4b58b480c82e0889dca93af8e6f8635"},"builds":[{"compileTarget":"dart2js","renderer":"canvaskit","mainJsPath":"main.dart.js"},{}]};
 
-_flutter.loader.load({
-  serviceWorkerSettings: {
-    serviceWorkerVersion: "2675298725" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */
-  }
-});
+
+// Flutter's own service worker is deprecated (it now only unregisters
+// itself), so the app loads without it.
+_flutter.loader.load();
+
+// R6: app-shell service worker (web/sw.js), network-first with a cache
+// fallback, so reloading while offline still opens the app. It registers
+// after load, never blocks start-up, and is seeded with the resources this
+// page already loaded (served from the HTTP cache, no second download).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      navigator.serviceWorker.ready.then(function (ready) {
+        setTimeout(function () {
+          var urls = [location.href.split('#')[0]].concat(
+            performance.getEntriesByType('resource').map(function (e) { return e.name; }));
+          var sw = ready.active || reg.active;
+          if (sw) sw.postMessage({ type: 'seed', urls: urls });
+        }, 8000);
+      });
+    }).catch(function () {});
+  });
+}
