@@ -17,6 +17,22 @@
   <base href="/collider-visionos/">
 
   <meta charset="UTF-8">
+  <!-- R6.1 (Apple HIG safe areas): viewport-fit=cover so the wallpaper runs
+       full-bleed behind the status bar / notch and env(safe-area-inset-top)
+       reports the inset the app keeps its top strip + search below. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <script>
+    // Flutter's engine may rewrite the viewport tag at start-up; keep cover.
+    (function () {
+      function keep() {
+        document.querySelectorAll('meta[name=viewport]').forEach(function (m) {
+          if (m.content.indexOf('viewport-fit=cover') < 0) m.content += ', viewport-fit=cover';
+        });
+      }
+      new MutationObserver(keep).observe(document.documentElement, {subtree: true, childList: true, attributes: true, attributeFilter: ['content']});
+      window.addEventListener('flutter-first-frame', keep);
+    })();
+  </script>
   <!-- R5: hosted playtest build; keep it out of search engines -->
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
